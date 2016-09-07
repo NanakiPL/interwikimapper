@@ -3,4 +3,4 @@ Script for creating a diagram of all language interwiki connections between Wiki
 
 ## Requirements
 * [Graphviz](http://www.graphviz.org/)
-* [Graphvix Python Package](https://pypi.python.org/pypi/graphviz) use:```pip install graphviz```
+* [Graphviz Python Package](https://pypi.python.org/pypi/graphviz) use:```pip install graphviz```
