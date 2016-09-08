@@ -40,6 +40,8 @@ class Graph(object):
         self.name = None
         self.depth = None
         self.checkall = None
+        
+        self.dot.attr('node', shape='circle')
     
     def node(self, wiki, **kwargs):
         if wiki.id in self.nodes: return
