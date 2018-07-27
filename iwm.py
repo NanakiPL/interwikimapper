@@ -1,5 +1,5 @@
 import sys, graphviz, re, json, os
-import urllib
+import urllib.request, urllib.parse, urllib.error
 from graphviz import Digraph
 
 if sys.version_info[0] > 2:
@@ -7,12 +7,12 @@ if sys.version_info[0] > 2:
     import urllib.request as urllib2
     raw_input = input
 else:
-    import urllib2
-    from urllib2 import HTTPError
+    import urllib.request, urllib.error, urllib.parse
+    from urllib.error import HTTPError
 
 def urlopen(url):
-    req = urllib2.Request(url, headers = {'User-agent': 'Interwiki Graph Generator'})
-    uo = urllib2.urlopen(req)
+    req = urllib.request.Request(url, headers = {'User-agent': 'Interwiki Graph Generator'})
+    uo = urllib.request.urlopen(req)
     try:
         if sys.version_info[0] > 2:
             uo.charset = uo.headers.get_content_charset()
@@ -64,7 +64,7 @@ class Graph(object):
         self.edges[w1.id][w2.id] = True
         w1, w2 = sorted([w1, w2], key=lambda x: x.level)
         
-        print('\nEdge between %s and %s' % (w1, w2))
+        print(('\nEdge between %s and %s' % (w1, w2)))
         
         if self.invalidEdge(w1, w2): return
         
@@ -81,10 +81,10 @@ class Graph(object):
             print('Good both ways')
         elif a and not b:
             if self.showOneWay > 0: self.dot.edge(w1.id, w2.id, comment='good one-way', style=[None,'invis',''][self.showOneWay])
-            print('Only \'%s\' correctly points to %s' % (w1, w2))
+            print(('Only \'%s\' correctly points to %s' % (w1, w2)))
         elif not a and b:
             if self.showOneWay > 0: self.dot.edge(w2.id, w1.id, comment='good one-way', style=[None,'invis',''][self.showOneWay])
-            print('Only \'%s\' correctly points to %s' % (w2, w1))
+            print(('Only \'%s\' correctly points to %s' % (w2, w1)))
     def _goodEdge(self, w1, w2):
         try:
             return Wiki.reURL.match(w1.langs[w2.lang]['url']).group(1) == w2.url # w1 corretly points to w2
@@ -96,7 +96,7 @@ class Graph(object):
         self._badEdge(w1, w2)
         self._badEdge(w2, w1)
     def _badEdge(self, w1, w2):
-        print('%s -> %s' % (w1, w2))
+        print(('%s -> %s' % (w1, w2)))
         badlinks = set()
         for lang, data in sorted(w1.langs.items()):
             wiki = Wiki(data['url'])
@@ -108,14 +108,14 @@ class Graph(object):
             
             if url != w2.url:
                 if w2.lang == lang:
-                    print('\'%s\' points to a redirect (http://%s/) to %s' % (lang, url, w2))
+                    print(('\'%s\' points to a redirect (http://%s/) to %s' % (lang, url, w2)))
                     if self.showRedir > 0: self.dot.edge(w1.id, w2.id, color='darkorange', headURL='http://%s/' % url, comment='redirect', style=[None,'invis',''][self.showRedir])
                 else:
-                    print('\'%s\' points to a redirect (http://%s/) to %s under wrong lang prefix' % (lang, url, w2))
+                    print(('\'%s\' points to a redirect (http://%s/) to %s under wrong lang prefix' % (lang, url, w2)))
                     if self.showBadRedir > 0: self.dot.edge(w1.id, w2.id, color='purple', fontcolor='purple', label=lang+':', headURL='http://%s/' % url, comment='wrong redirect', style=[None,'invis',''][self.showBadRedir])
             elif w2.lang != lang:
                 badlinks.add(lang)
-                print('\'%s\' points to %s under wrong lang prefix' % (lang, w2))
+                print(('\'%s\' points to %s under wrong lang prefix' % (lang, w2)))
         
         if len(badlinks) > 2:
             if self.showBad > 0: self.dot.edge(w1.id, w2.id, color='brown', fontcolor='brown', label='%d links' % len(badlinks), comment='wrong', style=[None,'invis','bold'][self.showBad])
@@ -131,7 +131,7 @@ class Graph(object):
             for lang, data in sorted(w2.langs.items()):
                 if Wiki(data['url']) != w1: continue
                 if self.showBroken > 0: self.dot.edge(w2.id, w1.id, color='red', fontcolor='red', label=lang+':', style=[None,'invis',''][self.showBroken])
-                print('Invalid \'%s\' link to %s' % (lang, w1))
+                print(('Invalid \'%s\' link to %s' % (lang, w1)))
             return True
         return False
     
@@ -183,15 +183,15 @@ class GraphGenerator(object):
         self.__initialized = True
         
         if url is None:
-            url = raw_input("\nPlease insert URL to wiki: ")
+            url = input("\nPlease insert URL to wiki: ")
         self.url = url
         
         if depth is None:
-            depth = raw_input("\nHow many levels do you want to check (0 - only ones linked from root): ")
+            depth = input("\nHow many levels do you want to check (0 - only ones linked from root): ")
         self.depth = int(depth)
         
         if checkall is None:
-            checkall = raw_input("\nDo you want to check links between [a]ll found wikis or only for [r]oot: ").lower() == 'a'
+            checkall = input("\nDo you want to check links between [a]ll found wikis or only for [r]oot: ").lower() == 'a'
         else:
             checkall = checkall == '1' or checkall.lower() == 'y'
         self.checkall = checkall
@@ -200,27 +200,27 @@ class GraphGenerator(object):
             print('How do you want to display link types?')
             print('[Show/Hide/Ignore]')
             showlinks = []
-            a = raw_input("Good both ways links? (green): ").lower()
+            a = input("Good both ways links? (green): ").lower()
             if a == 's': showlinks.append(2)
             elif a == 'h': showlinks.append(1)
             else: showlinks.append(0)
-            a = raw_input("Good one way links?  (black): ").lower()
+            a = input("Good one way links?  (black): ").lower()
             if a == 's': showlinks.append(2)
             elif a == 'h': showlinks.append(1)
             else: showlinks.append(0)
-            a = raw_input("Good redirects?      (orange): ").lower()
+            a = input("Good redirects?      (orange): ").lower()
             if a == 's': showlinks.append(2)
             elif a == 'h': showlinks.append(1)
             else: showlinks.append(0)
-            a = raw_input("Bad redirects?       (purple): ").lower()
+            a = input("Bad redirects?       (purple): ").lower()
             if a == 's': showlinks.append(2)
             elif a == 'h': showlinks.append(1)
             else: showlinks.append(0)
-            a = raw_input("Bad links?           (brown): ").lower()
+            a = input("Bad links?           (brown): ").lower()
             if a == 's': showlinks.append(2)
             elif a == 'h': showlinks.append(1)
             else: showlinks.append(0)
-            a = raw_input("Broken links?        (red): ").lower()
+            a = input("Broken links?        (red): ").lower()
             if a == 's': showlinks.append(2)
             elif a == 'h': showlinks.append(1)
             else: showlinks.append(0)
@@ -246,16 +246,16 @@ class GraphGenerator(object):
         print('\n\n')
     
     def nodes(self, wiki):
-        print('Working on http://%s/  -- level: %d' % (wiki.url, wiki.level))
+        print(('Working on http://%s/  -- level: %d' % (wiki.url, wiki.level)))
         self.dot.node(self.root, color='lightblue' if wiki.level == 0 else '')
-        print('Has %d language links' % len(wiki.langs.keys()))
+        print(('Has %d language links' % len(list(wiki.langs.keys()))))
         
         self.all.add(wiki)
         langs = sorted(wiki.langs.items())
         
         for lang, data in langs:
             w = Wiki(data['url'])
-            print('Found link to http://%s/' % w.url)
+            print(('Found link to http://%s/' % w.url))
             self.dot.node(w)
             self.all.add(w)
         
@@ -319,6 +319,8 @@ class Wiki(object):
         if isinstance(other, self.__class__):
             return self.id == other.id
         return False
+    def __hash__(self):
+        return hash(self.id)
             
     def setUrl(self, url):
         match = Wiki.reURL.match(url)
@@ -340,7 +342,7 @@ class Wiki(object):
             self.lang = res['query']['general']['lang']
             
             self.langs = {wiki['prefix']: wiki for wiki in res['query']['interwikimap']
-                          if u'language' in wiki}
+                          if 'language' in wiki}
         except (HTTPError, ValueError) as e:
             self.langs = {}
             self.invalid = True
@@ -353,7 +355,7 @@ class Wiki(object):
 if __name__ == "__main__":
     print("This script is lazy and most likely won't work for non-Wikia wikis\n")
     if len(sys.argv) != 5:
-        print("Usage: %s <url> <depth> <checkall> <showlinks>" % sys.argv[0])
+        print(("Usage: %s <url> <depth> <checkall> <showlinks>" % sys.argv[0]))
         print("url: url of the wiki")
         print("depth: how many levels to check <0|1|2|...>")
         print("checkall: check links between all wikis or only between root and target <1|0>")
@@ -370,5 +372,5 @@ if __name__ == "__main__":
     print('\n\n')
     #print(gen.source())
     gen.dot.save()
-    if raw_input('Render? ').lower() == 'y':
+    if input('Render? ').lower() == 'y':
         gen.dot.render(view=True)
