@@ -148,8 +148,8 @@ class Graph(object):
         f.write(' '.join(sorted(links)))
         f.close()
     
-    def filename(self):
-        return '%s/%s L%d %s [%s,%s,%s,%s,%s,%s].gv' % (
+    def filename(self, ext = 'gv'):
+        return '%s/%s L%d %s [%s,%s,%s,%s,%s,%s].%s' % (
             self.name,
             self.name,
             self.depth,
@@ -160,6 +160,7 @@ class Graph(object):
             ['I','H','S'][self.showBadRedir],
             ['I','H','S'][self.showBad],
             ['I','H','S'][self.showBroken],
+            ext,
         )
     
     def save(self, *args, **kwargs):
@@ -239,10 +240,10 @@ class GraphGenerator(object):
         self.all = set([root])
         
         self.dot = dot = Graph(comment='Interwiki map for http://%s/' % self.url)
-        dot.name = root.id
+        dot.name = re.sub('[\\\/]', '_', root.id)
         dot.depth = self.depth
         dot.checkall = self.checkall
-        dot.showGood, dot.showOneWay, dot.showRedir, dot.showBadRedir, dot.showBad, dot.showBroken = self.showlinks 
+        dot.showGood, dot.showOneWay, dot.showRedir, dot.showBadRedir, dot.showBad, dot.showBroken = (self.showlinks + ['s','s','s','s','s','s'])[:6]
         print('\n\n')
     
     def nodes(self, wiki):
@@ -284,14 +285,33 @@ class GraphGenerator(object):
     
     def source(self):
         return self.dot.source
+        
+    def log(self):
+        wikis = set([Wiki.cache[k] for k in Wiki.cache])
+        
+        with open(self.dot.filename('txt'), 'w') as file:
+            valid = [wiki.url for wiki in wikis if not wiki.invalid]
+            if len(valid) > 0:
+                file.write('Found wikis:\n')
+                file.write('\n'.join(sorted(valid)))
+                file.write('\n\n')
+            
+            invalid = [wiki.url for wiki in wikis if wiki.invalid]
+            if len(invalid) > 0:
+                file.write('Invalid wikis:\n')
+                file.write('\n'.join(sorted(invalid)))
+                file.write('\n\n')
 
 
 class Wiki(object):
     cache = {}
-    reURL = re.compile('(?:https?:\/\/)?(?:[^@\n]+@)?((?:www\.)?[^:\/\n]+)', re.I)
+    reURL = re.compile('(?:https?:\/\/)?(?:[^@\n]+@)?((?:www\.)?[^:\/\n]+(?:\/[a-z-][a-z-]+)?)', re.I)
     def __new__(cls, *args, **kwargs):
         match = Wiki.reURL.match(args[0])
         url = match.group(1)
+        
+        if url.endswith('/wiki'):
+            url = url[:-5]
         
         if url in Wiki.cache:
             return Wiki.cache[url]
@@ -325,6 +345,9 @@ class Wiki(object):
     def setUrl(self, url):
         match = Wiki.reURL.match(url)
         url = match.group(1)
+        if url.endswith('/wiki'):
+            url = url[:-5]
+        
         self.url = url
         self.id = url.replace('.wikia.com', '')
         Wiki.cache[url] = self
@@ -337,8 +360,8 @@ class Wiki(object):
             
             if 'error' in res:
                 raise RuntimeError('%s - %s' % (res['error']['code'], res['error']['info']))
-            
-            self.setUrl(res['query']['general']['server'])
+           
+            self.setUrl(res['query']['general']['server'] + res['query']['general']['scriptpath'])
             self.lang = res['query']['general']['lang']
             
             self.langs = {wiki['prefix']: wiki for wiki in res['query']['interwikimap']
@@ -372,5 +395,7 @@ if __name__ == "__main__":
     print('\n\n')
     #print(gen.source())
     gen.dot.save()
+    gen.log()
+    
     if input('Render? ').lower() == 'y':
         gen.dot.render(view=True)
